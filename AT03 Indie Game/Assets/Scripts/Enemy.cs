@@ -8,17 +8,32 @@ public class Enemy : FiniteStateMachine
     public Bounds bounds;
     public float viewRadius = 5f;
     public Transform player;
+    public EnemyIdleState idleState;
+    public EnemyWanderState wanderState;
+    public EnemyChaseState chaseState;
 
     public NavMeshAgent Agent { get; private set; }
-    public Transform Target { get; private set; }
+    public Animator Anim { get; private set; }
+    public AudioSource AudioSource { get; private set; }
 
 
     protected override void Awake()
     {
+        idleState = new EnemyIdleState(this, idleState);
+        wanderState = new EnemyWanderState(this, wanderState);
+        chaseState = new EnemyChaseState(this, chaseState);
         entryState = new EnemyIdleState(this);
         if (TryGetComponent(out NavMeshAgent agent) == true)
         {
             Agent = agent;
+        }
+        if (TryGetComponent (out AudioSource aSrc) == true)
+        {
+            AudioSource = aSrc;
+        }
+        if(transform.GetChild(0).TryGetComponent(out Animator anim) == true ) 
+        {
+            Anim = anim; 
         }
     }
     // Start is called before the first frame update
@@ -68,15 +83,21 @@ public abstract class EnemyBehaviourState : IState
 
     }
 }
+[System.Serializable]
 
 public class EnemyIdleState : EnemyBehaviourState
 {
+    [SerializeField]
     private Vector2 idleTimeRange = new Vector2(3, 10);
+    [SerializeField]
+    private AudioClip idleClip;
+
     private float timer = -1;
     private float idleTime = 0;
     public EnemyIdleState(Enemy instance) : base(instance)
     {
-
+        idleTimeRange = idle.idleTimeRange;
+        idleClip = idle.idleClip;
     }
 
     public override void OnStateEnter()
@@ -84,7 +105,8 @@ public class EnemyIdleState : EnemyBehaviourState
         Instance.Agent.isStopped = true;
         idleTime = Random.Range(idleTimeRange.x, idleTimeRange.y);
         timer = 0;
-        Debug.Log("idle state entered. waiting for" + idleTime + "seconds."); 
+        Instance.Anim.SetBool("isMoving", false);
+        Instance.AudioSource.PlayOneShot(idleClip);
     }
 
     public override void OnStateExit()
@@ -118,9 +140,11 @@ public class EnemyWanderState : EnemyBehaviourState
 {
     private Vector3 targetPostion;
     private float wanderSpeed = 3.5f;
+    [SerializeField]
+    private AudioClip audioClip
     public EnemyWanderState(Enemy instance) : base(instance)
     {
-
+        wanderClip = wanderSpeed.wanderClip
     }
     public override void OnStateEnter()
     {
@@ -134,7 +158,9 @@ public class EnemyWanderState : EnemyBehaviourState
             );
         targetPostion = randomPosInBounds;
         Instance.Agent.SetDestination(targetPostion);
-        Debug.Log("wander state entered postion" + targetPostion);
+        Instance.Anim.SetBool("isMoving", true);
+        Instance.Anim.SetBool("isChasing", false);
+        Instance.AudioSource.PlayOneShot(wanderClip);
     }
 
     public override void OnStateExit()
@@ -166,14 +192,20 @@ public class EnemyWanderState : EnemyBehaviourState
 
 public class EnemyChaseState : EnemyBehaviourState
 {
+    [SerializeField]
     private float chaseSpeed = 5f;
+    [SerializeField]
+    private AudioClip chaseClip;
     public EnemyChaseState(Enemy instance) : base(instance)
     {
     }
     public override void OnStateEnter()
     {
+        Instance.Agent.isStopped = false;
         Instance.Agent.speed = chaseSpeed;
-        Debug.Log("enter chase");
+        Instance.Anim.SetBool("isMoving", true);
+        Instance.Anim.SetBool("isChasing", false);
+
     }
 
     public override void OnStateExit()
