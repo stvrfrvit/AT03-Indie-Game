@@ -6,7 +6,7 @@ using UnityEngine.AI;
 public class Enemy : FiniteStateMachine
 {
     public Bounds bounds;
-    public float viewRadius = 5f;
+    public float viewRadius;
     public Transform player;
     public EnemyIdleState idleState;
     public EnemyWanderState wanderState;
@@ -22,7 +22,8 @@ public class Enemy : FiniteStateMachine
         idleState = new EnemyIdleState(this, idleState);
         wanderState = new EnemyWanderState(this, wanderState);
         chaseState = new EnemyChaseState(this, chaseState);
-        entryState = new EnemyIdleState(this);
+        entryState = idleState;
+
         if (TryGetComponent(out NavMeshAgent agent) == true)
         {
             Agent = agent;
@@ -57,7 +58,9 @@ public class Enemy : FiniteStateMachine
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, viewRadius);
     }
+
 }
+
 
 public abstract class EnemyBehaviourState : IState
     
@@ -94,7 +97,7 @@ public class EnemyIdleState : EnemyBehaviourState
 
     private float timer = -1;
     private float idleTime = 0;
-    public EnemyIdleState(Enemy instance) : base(instance)
+    public EnemyIdleState(Enemy instance, EnemyIdleState idle) : base(instance)
     {
         idleTimeRange = idle.idleTimeRange;
         idleClip = idle.idleClip;
@@ -139,11 +142,13 @@ public class EnemyIdleState : EnemyBehaviourState
 public class EnemyWanderState : EnemyBehaviourState
 {
     private Vector3 targetPostion;
+
     private float wanderSpeed = 3.5f;
     [SerializeField]
-    private AudioClip audioClip
+    private AudioClip audioClip;
     public EnemyWanderState(Enemy instance) : base(instance)
     {
+        wanderSpeed = wander.wanderSpeed
         wanderClip = wanderSpeed.wanderClip
     }
     public override void OnStateEnter()
@@ -157,7 +162,7 @@ public class EnemyWanderState : EnemyBehaviourState
             Random.Range(-Instance.bounds.extents.z, Instance.bounds.extents.z)
             );
         targetPostion = randomPosInBounds;
-        Instance.Agent.SetDestination(targetPostion);
+        Instance.Agent.SetDestination(targetPostion); +Instance.bounds.center;
         Instance.Anim.SetBool("isMoving", true);
         Instance.Anim.SetBool("isChasing", false);
         Instance.AudioSource.PlayOneShot(wanderClip);
@@ -210,11 +215,13 @@ public class EnemyChaseState : EnemyBehaviourState
 
     public override void OnStateExit()
     {
-        Debug.Log("exit chase");
+
     }
 
     public override void OnStateUpdate()
     {
+        Instance.Agent.SetDestination(Instance.transform.position);
+
         if (Vector3.Distance(Instance.transform.position, Instance.player.position) > Instance.viewRadius)
         {
             Instance.SetState(new EnemyWanderState(Instance));
