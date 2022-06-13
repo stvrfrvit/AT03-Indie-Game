@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Interaction : MonoBehaviour
 {
-    public float distance = 2.5f;
+    public float distance = 50f;
 
     // Update is called once per frame
     void Update()
